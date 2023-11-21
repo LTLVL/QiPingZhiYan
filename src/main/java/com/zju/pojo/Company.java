@@ -18,6 +18,7 @@ public class Company {
     private String contactNumber;
     private String businessStatus;
     private String USCC;
+    private String BRN;
     private String industry;
     private Integer numberOfEmployees;
     private Integer numberOfInsured;
