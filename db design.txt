@@ -1,0 +1,72 @@
+企业表（Company Table）字段设计：
+公司ID（ID）：唯一标识符，用于区分不同的公司，用工商注册号。INT
+公司名称（Company_Name）：公司的全名或注册名称。VARCHAR
+注册资本（Registered_Capital）：公司注册时的资本金额。DECIMAL
+注册类型（Registration_Type）：公司的注册类型，如有限责任公司、股份有限公司等。VARCHAR
+注册时间（Registration_Time）：公司完成注册的日期和时间。DATE
+成立日期（Establishment_Date）：公司成立的日期。DATE
+注册地址（Registered_Address）：公司注册的地址信息。VARCHAR
+经营范围（Business_Scope）：公司经营的业务范围描述。TEXT
+联系电话（Contact_Number）：公司的联系电话号码。VARCHAR
+经营状态（Business_Status）：公司当前的经营状态，如存续、吊销等。VARCHAR
+统一社会信用代码（USCC）：中国企业的唯一识别号码，用于标识企业身份。VARCHAR
+工商注册号（BRN）：中国企业的唯一识别号码，用于标识企业身份。VARCHAR
+所属行业（Industry）：公司所属的经营行业、领域或分类。VARCHAR
+员工人数（Number of Employees）：公司目前的员工人数。VARCHAR
+参保人数（Number_of_Insured）：记录公司当前的参保人数 INT
+经营风险（Business_Risk）：用于记录公司所面临的经营风险情况，可以是文字描述或者按照一定的评级标准进行分类。 TEXT
+司法风险（Legal_Risk）：用于记录公司所涉及的司法风险情况，包括已知的诉讼情况、法律纠纷或处罚等信息。 TEXT
+自身风险（Self_Risk）：记录公司的自身风险情况，用于描述或记录与公司内部运营相关的风险因素。TEXT
+周边风险（Surrounding_Risk）：记录公司周边环境中的风险因素用于描述或记录与公司所处地区、行业或经济环境相关的风险因素。TEXT
+历史风险（Historical_Risk）：记录公司过去的风险经历或事件用于描述或记录公司历史上发生过的重大风险事件或问题。TEXT
+预警提醒（Alert_Reminder）：记录与公司相关的预警信息或提醒事项。用于记录需要特别关注或注意的事项，比如到期证照、财务风险等。TEXT
+
+SQL语句
+CREATE TABLE Company (
+    ID INT NOT NULL,
+    Company_Name VARCHAR(255) NOT NULL,
+    Registered_Capital DECIMAL(10, 2),
+    Registration_Type VARCHAR(100),
+    Registration_Time DATE,
+    Establishment_Date DATE,
+    Registered_Address VARCHAR(255),
+    Business_Scope TEXT,
+    Contact_Number VARCHAR(20),
+    Business_Status VARCHAR(50),
+    USCC VARCHAR(50),
+    BRN VARCHAR(25),
+    Industry VARCHAR(100),
+    Number_of_Employees VARCHAR(50),
+    Number_of_Insured INT,
+    Business_Risk TEXT,
+    Legal_Risk TEXT,
+    Self_Risk TEXT,
+    Surrounding_Risk TEXT,
+    Historical_Risk TEXT,
+    Alert_Reminder TEXT,
+    PRIMARY KEY (Company_ID)
+);
+
+
+
+
+
+评价表（Review Table）字段设计：
+评价ID（ID）：唯一标识符，用于区分不同的评价记录。INT
+公司ID（Company_ID）：关联到企业表中的公司ID，表示该评价所属的公司。INT
+评价人（Reviewer_Name）：对公司进行评价的用户姓名或ID。VARCHAR
+评价时间（Review_Time）：评价被添加的日期和时间。DATE
+评价内容（Review_Content）：用户对公司的文字评价或评论。TEXT
+评分（Rating）：对公司的评分，通常是1到5分的范围。FLOAT
+评价来源（Review_Source）：标识评价信息的来源渠道或平台 TEXT
+
+CREATE TABLE Review (
+    ID INT NOT NULL,
+    Company_ID INT NOT NULL,
+    Reviewer_Name VARCHAR(100),
+    Review_Time DATE,
+    Review_Content TEXT,
+    Rating FLOAT,
+    Review_Source TEXT,
+    PRIMARY KEY (Review_ID),
+);

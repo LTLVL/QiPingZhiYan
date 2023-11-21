@@ -20,7 +20,7 @@ public class Company {
     private String USCC;
     private String BRN;
     private String industry;
-    private Integer numberOfEmployees;
+    private String numberOfEmployees;
     private Integer numberOfInsured;
     private String businessRisk;
     private String legalRisk;
