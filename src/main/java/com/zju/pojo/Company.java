@@ -7,7 +7,7 @@ import java.time.LocalDate;
 
 @Data
 public class Company {
-    private Integer companyId;
+    private Integer id;
     private String companyName;
     private BigDecimal registeredCapital;
     private String registrationType;
@@ -28,4 +28,6 @@ public class Company {
     private String surroundingRisk;
     private String historicalRisk;
     private String alertReminder;
+    private Float objectiveRating;
+    private Float subjectiveRating;
 }
