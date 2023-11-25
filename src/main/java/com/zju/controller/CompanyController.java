@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RestController("/company")
+
 public class CompanyController {
     @Autowired
     private CompanyService companyService;
@@ -32,7 +33,7 @@ public class CompanyController {
             CompanyAndReview companyAndReview = new CompanyAndReview();
             companyAndReview.setCompany(company);
             LambdaQueryWrapper<Review> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Review::getCompanyID, company.getId());
+            wrapper.eq(Review::getCompanyId, company.getId());
             List<Review> reviews = reviewService.list(wrapper);
             companyAndReview.setReviews((ArrayList<Review>) reviews);
         });
@@ -49,7 +50,7 @@ public class CompanyController {
             CompanyAndReview companyAndReview = new CompanyAndReview();
             companyAndReview.setCompany(company);
             LambdaQueryWrapper<Review> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Review::getCompanyID, company.getId());
+            wrapper.eq(Review::getCompanyId, company.getId());
             List<Review> reviews = reviewService.list(wrapper);
             companyAndReview.setReviews((ArrayList<Review>) reviews);
         });
@@ -68,7 +69,7 @@ public class CompanyController {
         CompanyAndReview companyAndReview = new CompanyAndReview();
         companyAndReview.setCompany(company);
         LambdaQueryWrapper<Review> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Review::getCompanyID, company.getId());
+        wrapper.eq(Review::getCompanyId, company.getId());
         List<Review> reviews = reviewService.list(wrapper);
         companyAndReview.setReviews((ArrayList<Review>) reviews);
         return Response.success(companyAndReview);

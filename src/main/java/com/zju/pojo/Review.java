@@ -7,10 +7,10 @@ import java.time.LocalDate;
 @Data
 public class Review {
     private Integer id;
-    private Integer CompanyID;
-    private String ReviewerName;
-    private LocalDate ReviewTime;
-    private String ReviewContent;
-    private Float Rating;
-    private String ReviewSource;
+    private Integer companyId;
+    private String reviewerName;
+    private LocalDate reviewTime;
+    private String reviewContent;
+    private Float rating;
+    private String reviewSource;
 }
