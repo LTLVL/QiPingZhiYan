@@ -1,77 +1,51 @@
 package com.zju.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zju.common.Response;
-import com.zju.pojo.Company;
 import com.zju.pojo.CompanyAndReview;
-import com.zju.pojo.Review;
 import com.zju.service.CompanyService;
-import com.zju.service.ReviewService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
+import java.io.IOException;
 import java.util.List;
 
-@RestController("/company")
-
+@RestController
 public class CompanyController {
     @Autowired
     private CompanyService companyService;
-    @Autowired
-    private ReviewService reviewService;
+
 
     @GetMapping("/subjective")
     public Response<List<CompanyAndReview>> selectAllSub() {
-        LambdaQueryWrapper<Company> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.orderByAsc(Company::getSubjectiveRating);
-        List<Company> companies = companyService.list(queryWrapper);
-        ArrayList<CompanyAndReview> result = new ArrayList<>();
-        companies.forEach(company -> {
-            CompanyAndReview companyAndReview = new CompanyAndReview();
-            companyAndReview.setCompany(company);
-            LambdaQueryWrapper<Review> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Review::getCompanyId, company.getId());
-            List<Review> reviews = reviewService.list(wrapper);
-            companyAndReview.setReviews((ArrayList<Review>) reviews);
-        });
-        return Response.success(result);
+        return companyService.selectAllSub();
     }
 
     @GetMapping("/objective")
     public Response<List<CompanyAndReview>> selectAllOb() {
-        LambdaQueryWrapper<Company> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.orderByAsc(Company::getObjectiveRating);
-        List<Company> companies = companyService.list(queryWrapper);
-        ArrayList<CompanyAndReview> result = new ArrayList<>();
-        companies.forEach(company -> {
-            CompanyAndReview companyAndReview = new CompanyAndReview();
-            companyAndReview.setCompany(company);
-            LambdaQueryWrapper<Review> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Review::getCompanyId, company.getId());
-            List<Review> reviews = reviewService.list(wrapper);
-            companyAndReview.setReviews((ArrayList<Review>) reviews);
-        });
-        return Response.success(result);
+        return companyService.selectAllOb();
     }
 
-    @GetMapping("/{name}")
-    public Response<CompanyAndReview> selectByName(@PathVariable String name) {
-        LambdaQueryWrapper<Company> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Company::getCompanyName, name);
-        Company company = companyService.getOne(queryWrapper);
-        if (company == null) {
-            //todo:调用爬虫查询公司数据
-            return Response.error("没有此公司");
-        }
-        CompanyAndReview companyAndReview = new CompanyAndReview();
-        companyAndReview.setCompany(company);
-        LambdaQueryWrapper<Review> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Review::getCompanyId, company.getId());
-        List<Review> reviews = reviewService.list(wrapper);
-        companyAndReview.setReviews((ArrayList<Review>) reviews);
-        return Response.success(companyAndReview);
+    /**
+     * 根据公司名查询相关索引
+     * @param companyName 企业名
+     * @return {@link Response}<{@link CompanyAndReview}>
+     */
+    @GetMapping("/company/{companyName}")
+    public Response<List<CompanyAndReview>> selectByName(@PathVariable String companyName) throws IOException {
+        return companyService.selectByName(companyName);
     }
+
+    /**
+     * 根据评论查询相关企业
+     * @param review 企业名
+     * @return {@link Response}<{@link CompanyAndReview}>
+     */
+    @GetMapping("/review/{review}")
+    public Response<List<CompanyAndReview>> selectByReview(@PathVariable String review) throws IOException{
+        return companyService.selectByReview(review);
+    }
+
+
 }

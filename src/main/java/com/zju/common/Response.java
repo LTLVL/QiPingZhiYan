@@ -1,10 +1,12 @@
 package com.zju.common;
 
+import lombok.Data;
+
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-
+@Data
 public class Response<T> implements Serializable {
     private Integer code; //编码：1成功，0和其它数字为失败
 
@@ -12,7 +14,6 @@ public class Response<T> implements Serializable {
 
     private T data; //数据
 
-    private Map map = new HashMap(); //动态数据
 
     public static <T> Response<T> success(T object) {
         Response<T> r = new Response<T>();
@@ -28,9 +29,5 @@ public class Response<T> implements Serializable {
         return r;
     }
 
-    public Response<T> add(String key, Object value) {
-        this.map.put(key, value);
-        return this;
-    }
 
 }
