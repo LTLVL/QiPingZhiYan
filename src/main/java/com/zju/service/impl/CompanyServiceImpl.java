@@ -5,28 +5,31 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.zju.common.Response;
 import com.zju.mapper.CompanyMapper;
-import com.zju.mapper.ReviewMapper;
 import com.zju.pojo.Company;
 import com.zju.pojo.CompanyAndReview;
 import com.zju.pojo.Review;
 import com.zju.service.CompanyService;
 import com.zju.service.ReviewService;
+import com.zju.util.Crawler;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
-import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -40,21 +43,26 @@ import java.util.Set;
 public class CompanyServiceImpl extends ServiceImpl<CompanyMapper, Company> implements CompanyService {
     @Autowired
     private ReviewService reviewService;
-
+    /**
+     * 用于认证授权ES
+     */
     private final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
 
-    private RestHighLevelClient client = new RestHighLevelClient(
+    /**
+     * 操作ES的工具类
+     */
+    private final RestHighLevelClient client = new RestHighLevelClient(
             RestClient.builder(
-            HttpHost.create("http://124.71.196.104:9200")
-        ).setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
-        @Override
-        public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpAsyncClientBuilder) {
-            credentialsProvider.setCredentials(AuthScope.ANY,
-                    new UsernamePasswordCredentials("elastic", "elastic"));
-            httpAsyncClientBuilder.disableAuthCaching();
-            return httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-        }
-    }));
+                    HttpHost.create("http://124.71.196.104:9200")
+            ).setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
+                @Override
+                public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpAsyncClientBuilder) {
+                    credentialsProvider.setCredentials(AuthScope.ANY,
+                            new UsernamePasswordCredentials("elastic", "elastic"));
+                    httpAsyncClientBuilder.disableAuthCaching();
+                    return httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                }
+            }));
 
     @Override
     public Response<List<CompanyAndReview>> selectAllSub() {
@@ -99,8 +107,14 @@ public class CompanyServiceImpl extends ServiceImpl<CompanyMapper, Company> impl
                 .query(QueryBuilders.matchQuery("all",companyName));
         List<Company> companies = handleCompanyResult(request);
         if (companies.size() == 0) {
-            //todo:调用爬虫查询公司数据
-            return Response.error("没有此公司");
+            //调用爬虫查询公司数据并插入索引库
+            CompanyAndReview companyAndReview = insertIndex(companyName);
+            if(companyAndReview == null){
+                return Response.error("无法获取该公司数据");
+            }
+            List<CompanyAndReview> companyAndReviews = new ArrayList<>();
+            companyAndReviews.add(companyAndReview);
+            return Response.success(companyAndReviews);
         }
         List<CompanyAndReview> companyAndReviews = new ArrayList<>();
         for (Company company : companies) {
@@ -154,6 +168,28 @@ public class CompanyServiceImpl extends ServiceImpl<CompanyMapper, Company> impl
         return reviews;
     }
 
+    private CompanyAndReview insertIndex(String companyName) throws IOException {
+        Crawler crawler = new Crawler();
+        CompanyAndReview companyAndReview = crawler.crawl(companyName);
+        if(companyAndReview == null){
+            return null;
+        }
+        Company company = companyAndReview.getCompany();
+        IndexRequest request = new IndexRequest("company").id(company.getId().toString());
+        request.source(JSON.toJSONString(company), XContentType.JSON);
+        IndexResponse index = client.index(request, RequestOptions.DEFAULT);
+
+        List<Review> list = companyAndReview.getReviews();
+        BulkRequest bulkRequest = new BulkRequest();
+        for (Review review : list) {
+            bulkRequest.add(new IndexRequest("review")
+                    .id(review.getId().toString())
+                    .source(JSON.toJSONString(review),XContentType.JSON));
+        }
+        client.bulk(bulkRequest, RequestOptions.DEFAULT);
+        return companyAndReview;
+    }
+
     //解析ES查询企业结果
     private List<Company> handleCompanyResult(SearchRequest request) throws IOException {
         SearchResponse response = client.search(request, RequestOptions.DEFAULT);
@@ -168,4 +204,5 @@ public class CompanyServiceImpl extends ServiceImpl<CompanyMapper, Company> impl
         }
         return companies;
     }
+
 }
