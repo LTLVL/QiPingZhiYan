@@ -12,10 +12,16 @@ import com.zju.pojo.Review;
 import com.zju.service.CompanyService;
 import com.zju.service.ReviewService;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
@@ -35,8 +41,20 @@ public class CompanyServiceImpl extends ServiceImpl<CompanyMapper, Company> impl
     @Autowired
     private ReviewService reviewService;
 
-    private RestHighLevelClient client = new RestHighLevelClient
-            (RestClient.builder(HttpHost.create("http://120.27.238.231:19200")));;
+    private final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+
+    private RestHighLevelClient client = new RestHighLevelClient(
+            RestClient.builder(
+            HttpHost.create("http://124.71.196.104:9200")
+        ).setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
+        @Override
+        public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpAsyncClientBuilder) {
+            credentialsProvider.setCredentials(AuthScope.ANY,
+                    new UsernamePasswordCredentials("elastic", "elastic"));
+            httpAsyncClientBuilder.disableAuthCaching();
+            return httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+        }
+    }));
 
     @Override
     public Response<List<CompanyAndReview>> selectAllSub() {

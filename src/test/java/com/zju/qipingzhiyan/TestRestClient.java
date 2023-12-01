@@ -1,9 +1,16 @@
 package com.zju.qipingzhiyan;
 
 import com.alibaba.fastjson2.JSON;
+import com.zju.pojo.Company;
 import com.zju.pojo.Review;
+import com.zju.service.CompanyService;
 import com.zju.service.ReviewService;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
@@ -14,10 +21,10 @@ import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.GetIndexRequest;
-import org.elasticsearch.client.indices.GetIndexResponse;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,17 +40,30 @@ public class TestRestClient {
     private RestHighLevelClient client;
     @Autowired
     private ReviewService reviewService;
+    @Autowired
+    private CompanyService companyService;
 
     @Test
     public void text() {
         System.out.println(this.client);
     }
+    final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+
 
     @BeforeEach
     public void before() {
-        client = new RestHighLevelClient(RestClient.builder(
-                HttpHost.create("http://120.27.238.231:19200")
-        ));
+        credentialsProvider.setCredentials(AuthScope.ANY,
+                new UsernamePasswordCredentials("elastic", "elastic"));
+        client = new RestHighLevelClient(
+                RestClient.builder(
+                HttpHost.create("http://124.71.196.104:9200")
+        ).setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
+                    @Override
+                    public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpAsyncClientBuilder) {
+                        httpAsyncClientBuilder.disableAuthCaching();
+                        return httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                    }
+                }));
     }
 
     @AfterEach
@@ -84,6 +104,19 @@ public class TestRestClient {
         request.source(JSON.toJSONString(review), XContentType.JSON);
 
         IndexResponse index = client.index(request, RequestOptions.DEFAULT);
+    }
+
+    //插入文档
+    @Test
+    public void testIndex() throws IOException {
+        List<Company> list = companyService.list();
+        BulkRequest request = new BulkRequest();
+        for (Company company : list) {
+            request.add(new IndexRequest("company")
+                    .id(company.getId().toString())
+                    .source(JSON.toJSONString(company),XContentType.JSON));
+        }
+        client.bulk(request, RequestOptions.DEFAULT);
     }
 
     //批量插入
