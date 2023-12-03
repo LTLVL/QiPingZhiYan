@@ -302,6 +302,8 @@ public class Crawler {
 
                     //评价来源（Review_Source）：标识评价信息的来源渠道或平台 TEXT
                     newReview.setReviewSource("牛客网");
+
+                    currentReviewArray.add(newReview);
                 }
 
                 //获取下一页的按钮
