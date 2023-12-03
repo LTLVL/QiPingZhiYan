@@ -5,6 +5,7 @@ import org.apache.ibatis.jdbc.Null;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -21,10 +22,15 @@ import com.zju.util.ltp;
 import java.time.Duration;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import java.text.ParseException;
 
 import com.google.gson.Gson;
 
@@ -36,7 +42,7 @@ public class Crawler {
 
         try {
             currentCompanyAndReview.setCompany(setCurCompany(companyName));
-            currentCompanyAndReview.setReviews(setCurReviewArray(companyName));
+            currentCompanyAndReview.setReviews(setCurReviewArray(companyName,currentCompanyAndReview.getCompany()));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -67,7 +73,7 @@ public class Crawler {
         }
         else{
             score=curComment.getData().getScore();
-            return score;
+            return score*5;
         }
     }
 
@@ -105,6 +111,11 @@ public class Crawler {
             Document document = Jsoup.parse(pageSource);
 
             // 在这里可以使用 jsoup 的方法提取需要的信息
+            //id
+            String curBrn = document.select("div.single:containsOwn(工商注册号) + div.value").text();
+            Integer curId=Integer.parseInt(curBrn);
+            currentCompany.setId(curId);
+
             //companyName
             String curCompanyName = document.select("div.inner-name.inner-title").text();
             currentCompany.setCompanyName(curCompanyName);
@@ -153,8 +164,11 @@ public class Crawler {
             currentCompany.setBusinessStatus(curBusinessStatus);
 
             //USCC
-            String curUSCC = document.select("div.single:containsOwn(统一社会信用代码) + div.value").text();
-            currentCompany.setUSCC(curUSCC);
+            String curUscc = document.select("div.single:containsOwn(统一社会信用代码) + div.value").text();
+            currentCompany.setUscc(curUscc);
+
+            //Brn
+            currentCompany.setBrn(curBrn);
 
             //industry行业
             String curIndustry = document.select("div:contains(行业) + div.value").text();
@@ -212,10 +226,101 @@ public class Crawler {
         return currentCompany;
     }
 
-    private static ArrayList<Review> setCurReviewArray(String companyName){
+    private static ArrayList<Review> setCurReviewArray(String companyName,Company curCompany){
         System.setProperty("webdriver.chrome.driver", "C:\\Program Files\\Google\\Chrome\\Application\\chromedriver.exe");
         WebDriver driver = new ChromeDriver();
         ArrayList<Review> currentReviewArray = new ArrayList<>();
+
+        int reviewCount=0;
+        int stopMark=0;
+
+        try {
+
+            driver.get("https://www.nowcoder.com/");
+            // 等待时间
+            int waitTimeInSeconds = 5;
+            // 将等待时间转换为 Duration 对象
+            Duration duration = Duration.ofSeconds(waitTimeInSeconds);
+            // 使用 WebDriverWait，并传入 Duration 对象
+            WebDriverWait wait = new WebDriverWait(driver, duration);
+
+            WebElement inputBox = driver.findElement(By.className("el-input__inner"));
+            WebElement searchButton = driver.findElement(By.xpath("//span[text()='搜索']"));
+
+            inputBox.sendKeys(companyName);
+            searchButton.click();
+
+            // 点击“公司评价”按钮
+            WebElement companyReviewButton = driver.findElement(By.xpath("//button[@class='el-button el-button--default search-tag' and contains(text(),'公司评价')]"));
+            wait.until(ExpectedConditions.elementToBeClickable(companyReviewButton));
+            companyReviewButton.click();
+
+            if(stopMark==0 && reviewCount<200) {
+                wait.until(ExpectedConditions.visibilityOfElementLocated(By.tagName("body")));
+                String pageSource = driver.getPageSource();
+                Document document = Jsoup.parse(pageSource);
+                Elements divElements = document.select("div[data-v-69abe70e]");
+
+                // 遍历每个<div>元素
+                for (Element divElement : divElements) {
+                    Document innerDocument = Jsoup.parseBodyFragment(divElement.html());
+
+                    Review newReview=new Review();
+
+                    reviewCount++;
+                    //评价ID（ID）：唯一标识符，用于区分不同的评价记录。INT
+                    newReview.setId(reviewCount);
+
+                    //公司ID（Company_ID）：关联到企业表中的公司ID，表示该评价所属的公司。INT
+                    newReview.setCompanyId(curCompany.getId());
+
+                    //评价人（Reviewer_Name）：对公司进行评价的用户姓名或ID。VARCHAR
+                    Element nicknameElements = innerDocument.selectFirst("div.user-nickname");
+                    String nickname = divElement.select("span.name-text").text();
+                    newReview.setReviewerName(nickname);
+
+                    //评价时间（Review_Time）：评价被添加的日期和时间。DATE
+                    Element timeElements = innerDocument.selectFirst("div.user-job-name");
+                    String timeText = divElement.select("div.tw-text-sm-pure.tw-text-gray-500").text();
+                      // 创建 DateTimeFormatter 对象，指定日期时间的格式
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd HH:mm");
+                      // 解析时间字符串为 LocalDateTime 对象
+                    LocalDateTime localDateTime = LocalDateTime.parse(timeText, formatter);
+                      // 获取 LocalDateTime 对象的 LocalDate 部分
+                    LocalDate localDate = localDateTime.toLocalDate();
+                    newReview.setReviewTime(localDate);
+
+                    //评价内容（Review_Content）：用户对公司的文字评价或评论。TEXT
+                    Element contentElement = innerDocument.selectFirst("span.vue-ellipsis-js-content");
+                    String contentText = contentElement.ownText();
+                    newReview.setReviewContent(contentText);
+
+                    //评分（Rating）：对公司的评分，通常是1到5分的范围。FLOAT
+                    Comment curComment = CommentAnalysis(contentText);
+                    double curScore = CommentScore(curComment);
+                    newReview.setRating((float)curScore);
+
+                    //评价来源（Review_Source）：标识评价信息的来源渠道或平台 TEXT
+                    newReview.setReviewSource("牛客网");
+                }
+
+                //获取下一页的按钮
+                WebElement buttonElement = driver.findElement(By.cssSelector("div.search-agination button.el-icon.el-icon-arrow-right"));
+                // 判断按钮是否可点击
+                if (buttonElement.isEnabled()) {
+                    // 执行点击操作
+                    buttonElement.click();
+                } else {
+                    //无法点击，证明到了末页
+                    stopMark=1;
+                }
+            }
+
+        }catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            driver.quit();
+        }
 
         return currentReviewArray;
     }
