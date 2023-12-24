@@ -104,13 +104,18 @@ public class CompanyServiceImpl extends ServiceImpl<CompanyMapper, Company> impl
     public Response<List<CompanyAndReview>> selectByName(String companyName) throws IOException {
         SearchRequest request = new SearchRequest("company");
         request.source()
-                .query(QueryBuilders.matchQuery("all",companyName));
+                .query(QueryBuilders.matchQuery("all", companyName));
         List<Company> companies = handleCompanyResult(request);
         if (companies.size() == 0) {
             //调用爬虫查询公司数据并插入索引库
             CompanyAndReview companyAndReview = insertIndex(companyName);
-            if(companyAndReview == null){
+            if (companyAndReview == null) {
                 return Response.error("无法获取该公司数据");
+            }
+            //插入数据库
+            this.save(companyAndReview.getCompany());
+            for (Review review : companyAndReview.getReviews()) {
+                reviewService.save(review);
             }
             List<CompanyAndReview> companyAndReviews = new ArrayList<>();
             companyAndReviews.add(companyAndReview);
@@ -133,7 +138,7 @@ public class CompanyServiceImpl extends ServiceImpl<CompanyMapper, Company> impl
     public Response<List<CompanyAndReview>> selectByReview(String review) throws IOException {
         SearchRequest request = new SearchRequest("review");
         request.source()
-                .query(QueryBuilders.matchQuery("reviewContent",review));
+                .query(QueryBuilders.matchQuery("reviewContent", review));
         List<Review> reviews = handleReviewResult(request);
         Set<Integer> companyIds = new HashSet<>();
         for (Review review1 : reviews) {
@@ -171,7 +176,7 @@ public class CompanyServiceImpl extends ServiceImpl<CompanyMapper, Company> impl
     private CompanyAndReview insertIndex(String companyName) throws IOException {
         Crawler crawler = new Crawler();
         CompanyAndReview companyAndReview = crawler.crawl(companyName);
-        if(companyAndReview == null){
+        if (companyAndReview == null) {
             return null;
         }
         Company company = companyAndReview.getCompany();
@@ -184,7 +189,7 @@ public class CompanyServiceImpl extends ServiceImpl<CompanyMapper, Company> impl
         for (Review review : list) {
             bulkRequest.add(new IndexRequest("review")
                     .id(review.getId().toString())
-                    .source(JSON.toJSONString(review),XContentType.JSON));
+                    .source(JSON.toJSONString(review), XContentType.JSON));
         }
         client.bulk(bulkRequest, RequestOptions.DEFAULT);
         return companyAndReview;
