@@ -1,10 +1,12 @@
 package com.zju.pojo;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
 @Data
+@NoArgsConstructor
 public class Review {
     private Integer id;
     private Integer companyId;
